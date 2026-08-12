@@ -1,14 +1,15 @@
 #!/usr/bin/env node
-// codequiz — shared state + hook output helpers.
+// codequiz — shared mute state. Host-free: no host may add anything here.
 // ponytail: one JSON file, no locking. Single user, single machine.
 
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
+// One path for every host, so muting in one mutes them all.
 const STATE_PATH =
   process.env.CODEQUIZ_STATE_PATH ||
-  path.join(os.homedir(), '.claude', '.codequiz-state.json');
+  path.join(os.homedir(), '.codequiz-state.json');
 
 const DEFAULT_STATE = { enabled: true, offUntil: 0, skip: 0, lastKind: 'product' };
 
@@ -66,24 +67,11 @@ function humanRemaining(state, now = Date.now()) {
   return 'on';
 }
 
-function writeHookOutput(additionalContext, systemMessage) {
-  const out = {};
-  if (systemMessage) out.systemMessage = systemMessage;
-  if (additionalContext) {
-    out.hookSpecificOutput = {
-      hookEventName: 'UserPromptSubmit',
-      additionalContext,
-    };
-  }
-  process.stdout.write(JSON.stringify(out));
-}
-
 module.exports = {
   DEFAULT_STATE,
   STATE_PATH,
   humanRemaining,
   parseDuration,
   readState,
-  writeHookOutput,
   writeState,
 };

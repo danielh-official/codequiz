@@ -1,8 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert');
 
-const { parseDuration, humanRemaining } = require('../hooks/codequiz-runtime');
-const { decide } = require('../hooks/codequiz-nag');
+const { parseDuration, humanRemaining } = require('../core/state');
+const { decide } = require('../core/decide');
 
 const NOW = 1_000_000;
 const on = (over = {}) => ({ enabled: true, offUntil: 0, skip: 0, lastKind: 'product', ...over });

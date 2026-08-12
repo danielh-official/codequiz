@@ -1,15 +1,10 @@
 #!/usr/bin/env node
-// codequiz — UserPromptSubmit hook.
-// Every prompt: append one open-ended code-or-product question to the response,
-// unless muted. Also parses the mute commands out of the prompt itself.
+// codequiz — the decision. Pure: no I/O, no clock, no host.
+// Every adapter (Claude Code hook, MCP server) routes through decide().
 
-const {
-  humanRemaining,
-  parseDuration,
-  readState,
-  writeHookOutput,
-  writeState,
-} = require('./codequiz-runtime');
+const fs = require('fs');
+const path = require('path');
+const { humanRemaining, parseDuration } = require('./state');
 
 const FOOTER =
   'answer it · ignore it · `/codequiz off 20` (prompts) · `/codequiz off 2h` (time) · `/codequiz off` · `/codequiz on`';
@@ -33,6 +28,17 @@ function instructions(kind, cwd) {
     `- **Clarifying** — they are asking what the question means, which code it refers to, or whether an assumption holds. Answer the clarification, then re-ask the same question, rewritten to be clearer: narrow the scope, name the file or function it is about, say what shape of answer you want. Never add the answer, a hint, or the rationale. Ignore the **${kind}** directive this turn — the open question keeps its original kind.`,
     '- **Moved on** — unrelated work, question dropped: drop it silently, never nag, and ask a new question of the kind named above.',
   ].join('\n');
+}
+
+// The full question-writing and grading rules. Claude Code loads these as a
+// skill; every other host has no skill mechanism, so the MCP server ships the
+// same text inline with the ask.
+function rules() {
+  try {
+    return fs.readFileSync(path.join(__dirname, 'rules.md'), 'utf8').trim();
+  } catch (e) {
+    return '';
+  }
 }
 
 // Pure so tests can drive it without stdin or a real clock.
@@ -91,25 +97,4 @@ function decide(prompt, state, now, cwd) {
   };
 }
 
-function main(raw) {
-  const data = JSON.parse(String(raw).replace(/^﻿/, ''));
-  const result = decide(data.prompt, readState(), Date.now(), data.cwd);
-
-  if (result.state) writeState(result.state);
-  if (result.action === 'command') writeHookOutput(`codequiz: ${result.message}. Acknowledge in one short line.`, result.message);
-  else if (result.action === 'ask') writeHookOutput(result.context);
-}
-
-if (require.main === module) {
-  let input = '';
-  process.stdin.on('data', (c) => { input += c; });
-  process.stdin.on('end', () => {
-    try {
-      main(input);
-    } catch (e) {
-      // Silent. The nagger must never break a prompt.
-    }
-  });
-}
-
-module.exports = { FOOTER, decide, instructions };
+module.exports = { FOOTER, decide, instructions, rules };
