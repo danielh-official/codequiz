@@ -20,7 +20,7 @@ answer it · ignore it · `/codequiz off 20` (prompts) · `/codequiz off 2h` (ti
 /plugin install codequiz@codequiz
 ```
 
-Local development: `/plugin marketplace add ~/GitHub/codequiz` instead of the first line.
+Local development? `/plugin marketplace add ~/{dir}/codequiz` instead.
 
 ## Controls
 
