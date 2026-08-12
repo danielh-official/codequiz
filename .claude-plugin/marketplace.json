@@ -1,0 +1,16 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "codequiz",
+  "description": "Ambient understanding check for your own codebase. One open-ended question per prompt.",
+  "owner": {
+    "name": "Daniel (Haven) Hotyanov"
+  },
+  "plugins": [
+    {
+      "name": "codequiz",
+      "description": "One open-ended code or product question appended to every response. Ignore or mute anytime.",
+      "source": "./",
+      "category": "productivity"
+    }
+  ]
+}

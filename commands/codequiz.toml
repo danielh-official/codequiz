@@ -1,0 +1,2 @@
+description = "Control the ambient quizzer: on | off | off <N> | off <2h> | status"
+prompt = "codequiz control: {{args}}. The UserPromptSubmit hook already applied this change to ~/.claude/.codequiz-state.json — acknowledge the new state in one short line and do not restate the whole command table unless asked. Reminder of the modes: bare number = that many prompts, 30s/45m/2h/1d = time, bare 'off' = indefinite, 'on' = resume, 'status' = report remaining mute."

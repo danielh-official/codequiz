@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/codequiz-nag.js\"",
+            "commandWindows": "node \"%CLAUDE_PLUGIN_ROOT%\\hooks\\codequiz-nag.js\"",
+            "timeout": 5,
+            "statusMessage": "codequiz..."
+          }
+        ]
+      }
+    ]
+  }
+}
