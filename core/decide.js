@@ -2,6 +2,8 @@
 // codequiz — the decision. Pure: no I/O, no clock, no host.
 // Every adapter (Claude Code hook, MCP server) routes through decide().
 
+const fs = require('fs');
+const path = require('path');
 const { humanRemaining, parseDuration } = require('./state');
 
 const FOOTER =
@@ -26,6 +28,17 @@ function instructions(kind, cwd) {
     `- **Clarifying** — they are asking what the question means, which code it refers to, or whether an assumption holds. Answer the clarification, then re-ask the same question, rewritten to be clearer: narrow the scope, name the file or function it is about, say what shape of answer you want. Never add the answer, a hint, or the rationale. Ignore the **${kind}** directive this turn — the open question keeps its original kind.`,
     '- **Moved on** — unrelated work, question dropped: drop it silently, never nag, and ask a new question of the kind named above.',
   ].join('\n');
+}
+
+// The full question-writing and grading rules. Claude Code loads these as a
+// skill; every other host has no skill mechanism, so the MCP server ships the
+// same text inline with the ask.
+function rules() {
+  try {
+    return fs.readFileSync(path.join(__dirname, 'rules.md'), 'utf8').trim();
+  } catch (e) {
+    return '';
+  }
 }
 
 // Pure so tests can drive it without stdin or a real clock.
@@ -84,4 +97,4 @@ function decide(prompt, state, now, cwd) {
   };
 }
 
-module.exports = { FOOTER, decide, instructions };
+module.exports = { FOOTER, decide, instructions, rules };

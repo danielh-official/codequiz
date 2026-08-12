@@ -1,0 +1,5 @@
+# codequiz — append to ~/.codex/config.toml
+# @latest so the server updates itself; the files the installer writes stay pinned.
+[mcp_servers.codequiz]
+command = "npx"
+args = ["-y", "codequiz@latest", "mcp"]

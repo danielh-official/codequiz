@@ -15,32 +15,20 @@ answer it · ignore it · `/codequiz off 20` (prompts) · `/codequiz off 2h` (ti
 
 ## Install
 
-Both hosts use a `UserPromptSubmit` hook, so the question is guaranteed — it fires whether or not the model feels like cooperating.
+| Host | Install | Fidelity |
+|---|---|---|
+| **Claude Code** | `/plugin marketplace add danielh-official/codequiz`<br>`/plugin install codequiz@codequiz` | **Guaranteed** — a hook fires every prompt |
+| **Codex** | `npx codequiz install codex` | Best effort |
+| **Cursor** | `npx codequiz install cursor` (run in the project) | Best effort, per-project |
+| **Any MCP host** | `npx codequiz install mcp` | Best effort |
 
-**Claude Code**
+Local development on the Claude Code plugin: `/plugin marketplace add ~/GitHub/codequiz`.
 
-```
-/plugin marketplace add danielh-official/codequiz
-/plugin install codequiz@codequiz
-```
+### Guaranteed vs best effort
 
-**Codex**
+Claude Code has a `UserPromptSubmit` hook — a **push** injection point that fires whether or not the model cooperates. No other host has one. Everywhere else the question is **pull**: an `AGENTS.md` line asks the model to call the `codequiz_next` MCP tool before it ends a turn, and sometimes it won't. Same logic, same questions, fewer of them.
 
-```
-git clone https://github.com/danielh-official/codequiz
-cd codequiz
-node bin/cli.js install codex
-```
-
-Writes `~/.codex/hooks.json` (merging with any hooks already there) and appends the question rules to `~/.codex/AGENTS.md`. Codex asks you to trust the new hook the first time it fires.
-
-No npm package, no MCP server, no dependencies — Node stdlib only.
-
-### Why only these two
-
-The whole thing rests on a **push** injection point: something that fires on every prompt without the model choosing to invoke it. Claude Code and Codex both expose one, with a byte-compatible contract — same `hooks.json` shape, same `hookSpecificOutput.additionalContext` output. `core/hook.js` serves both unchanged.
-
-Cursor has hooks but no per-prompt injection: `beforeSubmitPrompt` can block a prompt, not add to it. A pull-based fallback — asking the model to call an MCP tool before it answers — was built and then removed, because a quizzer the model can silently skip is worse than no quizzer.
+Cursor is the weakest of the three: its rule files are per-project, so `install cursor` covers one repo. For every repo, paste `adapters/agents-snippet.md` into Cursor Settings → Rules by hand.
 
 ## Controls
 
@@ -54,39 +42,34 @@ Cursor has hooks but no per-prompt injection: `beforeSubmitPrompt` can block a p
 
 `stop codequiz` and `quiz me later` also mute indefinitely.
 
-On Claude Code these are a real slash command. On Codex the hook reads them straight out of your prompt text — if Codex intercepts the leading `/`, type `codequiz off 2h` without it, or use `stop codequiz`.
-
-Mute state is shared: mute in Claude Code and Codex goes quiet too.
+Mute state is shared across every host — mute in Claude Code and Codex goes quiet too.
 
 ## Updating
 
+Static files are pinned; refresh them deliberately.
+
 - **Claude Code:** `/plugin marketplace update codequiz`. Nothing auto-pulls.
-- **Codex:** `git pull` in the clone. The hook runs from there, so that's the whole update.
+- **Codex / Cursor / MCP:** the MCP entry runs `npx -y codequiz@latest mcp`, so the server updates itself. Re-run `npx codequiz install <host>` to refresh the prompt and rule files.
 
 ## How it works
 
 ```
-core/
-  decide.js      the whole decision, pure: (prompt, state, now, cwd) -> action
-  state.js       shared mute state
-  hook.js        the UserPromptSubmit shim both hosts run
-  rules.md       how a question is written and graded
-adapters/
-  claude-code/   plugin manifest, hooks.json, skill, vendored copy of core/
-  codex/         reference hooks.json + generated AGENTS.md snippet
-bin/cli.js       node bin/cli.js install codex
-scripts/sync.js  regenerates everything derived from core/
+core/          decide.js (pure), state.js, rules.md — no host knowledge
+mcp/server.js  MCP adapter: codequiz_next tool + codequiz prompt
+bin/cli.js     npx codequiz install <host> | npx codequiz mcp
+adapters/      claude-code (hook, command, skill), codex, cursor
+scripts/sync.js  regenerates the claude-code adapter's copies of core/
 ```
 
-`core/decide.js` holds the entire decision — mute parsing, code/product alternation, the instruction text — as one pure function with no I/O and no clock, which is why it can be tested against a fake `now`.
+`core/decide.js` holds the whole decision — mute parsing, code/product alternation, the instruction text — as one pure function of `(prompt, state, now, cwd)`. Every adapter is a translator around it: the Claude Code hook converts stdin JSON to and from Claude Code's shapes, the MCP server converts tool arguments to and from MCP's. Neither contains a copy of the logic.
 
-`core/hook.js` is the only part that knows a wire format, and it is the same format on both hosts.
+`core/rules.md` is the single source for how a question is written and graded. The MCP server ships that text inline with each ask, because no other host has a skill mechanism.
 
-The Claude Code plugin carries **generated copies** of `core/` and of `SKILL.md`, because org sync packages `adapters/claude-code/` on its own and it cannot require its way up to the repo root. Codex has no skill mechanism, so its rules go into `AGENTS.md` instead. All three derived files come from `npm run sync`, and `npm test` fails if they drift. Edit `core/`, never the copies.
+The Claude Code plugin has to be self-contained — org sync packages `adapters/claude-code/` on its own, so it cannot require its way up to `core/`. It carries generated copies instead: `npm run sync` rebuilds `SKILL.md` and `adapters/claude-code/core/` from `core/`, and `npm test` fails if they drift. Edit `core/`, never the copies.
 
 State: `~/.codequiz-state.json` (override with `CODEQUIZ_STATE_PATH`).
 
-Every failure path in the hook exits silently — both hosts block the prompt on it, so a broken quizzer must never cost you a turn.
+The Claude Code path has no dependencies and every failure exits silently — it can never block a prompt. The MCP server depends on `@modelcontextprotocol/sdk`.
 
 ```
 npm test
