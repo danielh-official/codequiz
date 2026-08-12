@@ -5,7 +5,7 @@ description: Ambient understanding check — one open-ended code or product ques
 
 # codequiz
 
-Check that the user understands their own project — one question at a time, in the flow of normal work. The host tells you which kind to ask (`code` or `product`, alternating): on Claude Code a `UserPromptSubmit` hook injects the ask on every prompt; on every other host you call the `codequiz_next` MCP tool and it returns the same ask.
+Check that the user understands their own project — one question at a time, in the flow of normal work. Installed as a plugin; a `UserPromptSubmit` hook injects the ask on every prompt and tells you which kind to ask (`code` or `product`, alternating).
 
 ## The question
 
@@ -20,13 +20,15 @@ Exactly **one**, appended at the very end of the response, after the real work i
 
 ## Answering
 
-The ask fires every turn, so it cannot tell whether the open question was answered. You can. Classify the prompt first, then act:
+The hook fires on every prompt, so it cannot tell whether the open question was answered. You can. Classify the prompt first, then act:
 
 - **Answered** — grade **Solid / Partial / Off** in one line: what they got, what they missed, ground truth with `file:line`. Honest — partial credit only for genuinely partial reasoning. Then continue with whatever they asked for, and ask a new question.
-- **Clarifying** — they're asking what the question means, which code it points at, or whether an assumption holds. Answer that, then **re-ask the same question, rewritten to be clearer**: narrower scope, the file or function named, the shape of answer you want. Still no answer, hint, or rationale. Keep its original kind; ignore the kind named this turn. This is the only case where re-asking is right.
+- **Clarifying** — they're asking what the question means, which code it points at, or whether an assumption holds. Answer that, then **re-ask the same question, rewritten to be clearer**: narrower scope, the file or function named, the shape of answer you want. Still no answer, hint, or rationale. Keep its original kind; ignore the kind the hook named this turn. This is the only case where re-asking is right.
 - **Ignored** — the user moves on to other work: drop it. No "you didn't answer", no nagging. Ask a new one.
 
 ## Controls
+
+The hook applies these; you just acknowledge in one line.
 
 | Command | Effect |
 |---|---|
@@ -38,6 +40,11 @@ The ask fires every turn, so it cannot tell whether the open question was answer
 
 `stop codequiz` and `quiz me later` also mute indefinitely.
 
-On Claude Code the hook applies these before you see the prompt — just acknowledge in one line. On other hosts, pass the command through to `codequiz_next` and report what it returns.
+## Install
 
-Mute state is shared across every host: `~/.codequiz-state.json`, override with `CODEQUIZ_STATE_PATH`.
+```
+/plugin marketplace add ~/GitHub/codequiz
+/plugin install codequiz@codequiz
+```
+
+State lives at `~/.claude/.codequiz-state.json`.

@@ -10,7 +10,7 @@
     {
       "name": "codequiz",
       "description": "One open-ended code or product question appended to every response. Ignore or mute anytime.",
-      "source": "./adapters/claude-code",
+      "source": "./",
       "category": "productivity"
     }
   ]
