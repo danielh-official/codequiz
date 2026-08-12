@@ -2,7 +2,9 @@
 
 Ambient understanding check for your own code. Install once; from then on, every response in every repo ends with **one open-ended question** — code or product, alternating — about what you're actually working on.
 
-No quiz sessions, no multiple choice, no scores. Answer it and get graded in one line. Ignore it and it disappears.
+I built this because I wanted to make sure I understand the technology and concepts I was working with while still employing Claude in my workflow.
+
+## Example Question
 
 ```
 ---
