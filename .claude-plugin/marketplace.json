@@ -3,7 +3,8 @@
   "name": "codequiz",
   "description": "Ambient understanding check for your own codebase. One open-ended question per prompt.",
   "owner": {
-    "name": "Daniel (Haven) Hotyanov"
+    "name": "Daniel (Haven) Hotyanov",
+    "url": "https://github.com/danielh-official"
   },
   "plugins": [
     {

@@ -14,9 +14,11 @@ answer it · ignore it · `/codequiz off 20` (prompts) · `/codequiz off 2h` (ti
 ## Install
 
 ```
-/plugin marketplace add ~/GitHub/codequiz
+/plugin marketplace add danielh-official/codequiz
 /plugin install codequiz@codequiz
 ```
+
+Local development: `/plugin marketplace add ~/GitHub/codequiz` instead of the first line.
 
 ## Controls
 
@@ -42,3 +44,7 @@ Node stdlib only, no dependencies. Every failure path in the hook exits silently
 ```
 node --test tests/hooks.test.js
 ```
+
+## License
+
+MIT — see [LICENSE](LICENSE).
