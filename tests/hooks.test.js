@@ -29,6 +29,12 @@ test('asks by default, alternating kind', () => {
   assert.match(second.context, /\*\*product\*\* question/);
 });
 
+test('instruction carries the clarify-vs-answer triage', () => {
+  const ctx = decide('fix the parser', on(), NOW, '/repo').context;
+  assert.match(ctx, /clarif/i);
+  assert.match(ctx, /re-ask the same question/i);
+});
+
 test('never leaks controls into a muted turn', () => {
   assert.equal(decide('anything', on({ enabled: false }), NOW).action, 'muted');
   assert.equal(decide('anything', on({ offUntil: NOW + 1 }), NOW).action, 'muted');

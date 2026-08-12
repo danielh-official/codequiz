@@ -26,8 +26,12 @@ function instructions(kind, cwd) {
     '- One question. Open-ended. No multiple choice, no yes/no, no answer or hint in the same message.',
     '- Set it off from the work: a `---` rule, then the question, then this footer verbatim on its own line:',
     `  ${FOOTER}`,
-    '- If the user ignores it and moves on, drop it silently. Never re-ask, never nag.',
-    '- If the user answers, grade it Solid / Partial / Off in one line with the ground truth and `file:line`, then move on.',
+    '',
+    'Before you ask anything, classify this prompt against the question you asked last turn (if there was one). Do not ask a new question until you have.',
+    '',
+    '- **Answered** — grade it Solid / Partial / Off in one line with the ground truth and `file:line`, then ask a new question of the kind named above.',
+    `- **Clarifying** — they are asking what the question means, which code it refers to, or whether an assumption holds. Answer the clarification, then re-ask the same question, rewritten to be clearer: narrow the scope, name the file or function it is about, say what shape of answer you want. Never add the answer, a hint, or the rationale. Ignore the **${kind}** directive this turn — the open question keeps its original kind.`,
+    '- **Moved on** — unrelated work, question dropped: drop it silently, never nag, and ask a new question of the kind named above.',
   ].join('\n');
 }
 
@@ -77,6 +81,8 @@ function decide(prompt, state, now, cwd) {
   if (state.offUntil > now) return { action: 'muted', state };
   if (state.skip > 0) return { action: 'muted', state: { ...state, skip: state.skip - 1 } };
 
+  // ponytail: kind alternates every prompt, including turns the model spends
+  // re-asking an open question. Self-corrects on the next new question.
   const kind = state.lastKind === 'code' ? 'product' : 'code';
   return {
     action: 'ask',

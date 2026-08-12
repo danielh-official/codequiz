@@ -20,8 +20,11 @@ Exactly **one**, appended at the very end of the response, after the real work i
 
 ## Answering
 
-- **Ignored** — the user moves on to other work: drop it. No re-asking, no "you didn't answer". One question per prompt, always the newest one.
-- **Answered** — grade **Solid / Partial / Off** in one line: what they got, what they missed, ground truth with `file:line`. Honest — partial credit only for genuinely partial reasoning. Then continue with whatever they asked for.
+The hook fires on every prompt, so it cannot tell whether the open question was answered. You can. Classify the prompt first, then act:
+
+- **Answered** — grade **Solid / Partial / Off** in one line: what they got, what they missed, ground truth with `file:line`. Honest — partial credit only for genuinely partial reasoning. Then continue with whatever they asked for, and ask a new question.
+- **Clarifying** — they're asking what the question means, which code it points at, or whether an assumption holds. Answer that, then **re-ask the same question, rewritten to be clearer**: narrower scope, the file or function named, the shape of answer you want. Still no answer, hint, or rationale. Keep its original kind; ignore the kind the hook named this turn. This is the only case where re-asking is right.
+- **Ignored** — the user moves on to other work: drop it. No "you didn't answer", no nagging. Ask a new one.
 
 ## Controls
 
