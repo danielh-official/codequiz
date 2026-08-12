@@ -1,8 +1,0 @@
-{
-  "mcpServers": {
-    "codequiz": {
-      "command": "npx",
-      "args": ["-y", "codequiz@latest", "mcp"]
-    }
-  }
-}

@@ -1,15 +1,17 @@
 #!/usr/bin/env node
-// codequiz CLI — `codequiz mcp` runs the server, `codequiz install <host>`
-// writes that host's config. Claude Code is not installable from here: it goes
-// through the plugin marketplace, which is a better install than anything this
-// could write.
+// codequiz CLI — installs the Codex hook.
+//
+// Claude Code is not installable from here: it goes through the plugin
+// marketplace, which is a better install than anything this could write.
+// Nothing is published to npm; the hook runs out of this clone, so `git pull`
+// is the update.
 
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
 const ROOT = path.join(__dirname, '..');
-const AGENTS_SNIPPET = fs.readFileSync(path.join(ROOT, 'adapters', 'agents-snippet.md'), 'utf8').trim();
+const HOOK = path.join(ROOT, 'core', 'hook.js');
 const MARKER = '<!-- codequiz -->';
 
 const touched = [];
@@ -20,7 +22,7 @@ function writeFile(file, body) {
   const existed = fs.existsSync(file);
   if (existed && fs.readFileSync(file, 'utf8') === body) return note('unchanged', file);
   fs.writeFileSync(file, body);
-  note(existed ? 'overwrote' : 'wrote', file);
+  note(existed ? 'updated' : 'wrote', file);
 }
 
 // Append the snippet once, fenced by markers so a re-install replaces the old
@@ -33,7 +35,6 @@ function appendBlock(file, body) {
   if (fence.test(existing)) {
     const next = existing.replace(fence, block);
     if (next === existing) return note('unchanged', file);
-    fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, next);
     return note('updated block in', file);
   }
@@ -44,97 +45,84 @@ function appendBlock(file, body) {
   note(existing ? 'appended to' : 'wrote', file);
 }
 
-function installCodex() {
-  const dir = path.join(os.homedir(), '.codex');
-  writeFile(
-    path.join(dir, 'prompts', 'codequiz.md'),
-    fs.readFileSync(path.join(ROOT, 'adapters', 'codex', 'prompts', 'codequiz.md'), 'utf8')
-  );
-  appendBlock(path.join(dir, 'AGENTS.md'), AGENTS_SNIPPET);
+const isOurs = (group) =>
+  (group.hooks || []).some((h) => typeof h.command === 'string' && h.command.includes('codequiz'));
 
-  const config = path.join(dir, 'config.toml');
-  const existing = fs.existsSync(config) ? fs.readFileSync(config, 'utf8') : '';
-  if (/^\s*\[mcp_servers\.codequiz\]/m.test(existing)) note('already configured', config);
-  else {
-    const snippet = fs.readFileSync(path.join(ROOT, 'adapters', 'codex', 'config.snippet.toml'), 'utf8');
-    fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(config, existing + (existing.endsWith('\n') || !existing ? '' : '\n') + '\n' + snippet);
-    note(existing ? 'appended to' : 'wrote', config);
+// Merge into whatever is already in hooks.json. Other people's hooks survive;
+// only a previous codequiz entry is replaced.
+function installCodex(home) {
+  const dir = path.join(home, '.codex');
+  const file = path.join(dir, 'hooks.json');
+
+  let config = {};
+  if (fs.existsSync(file)) {
+    try {
+      config = JSON.parse(fs.readFileSync(file, 'utf8'));
+    } catch (e) {
+      // Refuse to clobber a file we cannot parse — the user's other hooks live
+      // in there and a rewrite would silently drop them.
+      throw new Error(`${file} is not valid JSON — fix or move it, then re-run`);
+    }
   }
-}
 
-// ponytail: project-scoped. Cursor has no file-installable global rule — the
-// user pastes into Settings -> Rules for that. Documented in the README.
-function installCursor(target) {
-  const frontmatter = fs.readFileSync(path.join(ROOT, 'adapters', 'cursor', 'frontmatter.mdc'), 'utf8');
-  writeFile(path.join(target, '.cursor', 'rules', 'codequiz.mdc'), `${frontmatter}\n${AGENTS_SNIPPET}\n`);
+  config.hooks = config.hooks || {};
+  const groups = (config.hooks.UserPromptSubmit || []).filter((g) => !isOurs(g));
+  groups.push({
+    hooks: [
+      {
+        type: 'command',
+        command: `node ${HOOK}`,
+        timeout: 5,
+        statusMessage: 'codequiz...',
+      },
+    ],
+  });
+  config.hooks.UserPromptSubmit = groups;
 
-  const file = path.join(target, '.cursor', 'mcp.json');
-  const config = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : {};
-  config.mcpServers = config.mcpServers || {};
-  config.mcpServers.codequiz = { command: 'npx', args: ['-y', 'codequiz@latest', 'mcp'] };
   writeFile(file, JSON.stringify(config, null, 2) + '\n');
-}
-
-// Any other MCP host: we cannot know its config format, so print what it needs.
-function installGeneric(target) {
-  appendBlock(path.join(target, 'AGENTS.md'), AGENTS_SNIPPET);
-  return [
-    '',
-    'Register this stdio MCP server with your host:',
-    '',
-    '  command: npx',
-    '  args:    ["-y", "codequiz@latest", "mcp"]',
-  ].join('\n');
+  appendBlock(path.join(dir, 'AGENTS.md'), fs.readFileSync(path.join(ROOT, 'core', 'rules.md'), 'utf8').trim());
 }
 
 const USAGE = `codequiz — ambient understanding check
 
-  codequiz install codex     ~/.codex: prompt, AGENTS.md, config.toml
-  codequiz install cursor    ./.cursor: rule + mcp.json (project-scoped)
-  codequiz install mcp       ./AGENTS.md + the stdio command to register
-  codequiz mcp               run the MCP server (what host configs invoke)
+  node bin/cli.js install codex    ~/.codex: hooks.json + AGENTS.md
 
 Claude Code installs through the plugin marketplace instead:
   /plugin marketplace add danielh-official/codequiz
   /plugin install codequiz@codequiz
+
+The hook runs from this clone, so \`git pull\` is the update.
 `;
 
-function main(argv) {
+function main(argv, home = os.homedir()) {
   const [cmd, host] = argv;
 
-  if (cmd === 'mcp') return require('../mcp/server.js').main();
-
-  if (cmd !== 'install') {
+  if (cmd !== 'install' || (host !== 'codex' && host !== 'claude-code' && host !== 'claude')) {
     console.log(USAGE);
     process.exitCode = cmd ? 1 : 0;
     return;
   }
 
-  const target = process.cwd();
-  let extra = '';
-  if (host === 'codex') installCodex();
-  else if (host === 'cursor') installCursor(target);
-  else if (host === 'mcp' || host === 'generic') extra = installGeneric(target);
-  else if (host === 'claude-code' || host === 'claude') {
+  if (host !== 'codex') {
     console.log('Claude Code installs through the marketplace:\n');
     console.log('  /plugin marketplace add danielh-official/codequiz');
     console.log('  /plugin install codequiz@codequiz\n');
     return;
-  } else {
-    console.log(USAGE);
-    process.exitCode = 1;
-    return;
   }
 
-  console.log(`codequiz installed for ${host}:`);
+  installCodex(home);
+  console.log('codequiz installed for codex:');
   console.log(touched.join('\n'));
-  if (extra) console.log(extra);
-  console.log('\nRestart the host to pick it up.');
+  console.log('\nRestart Codex. It will ask you to trust the new hook the first time it fires.');
 }
 
 if (require.main === module) {
-  main(process.argv.slice(2));
+  try {
+    main(process.argv.slice(2));
+  } catch (e) {
+    console.error(`codequiz: ${e.message}`);
+    process.exitCode = 1;
+  }
 }
 
-module.exports = { appendBlock, main };
+module.exports = { appendBlock, installCodex, main, touched };
