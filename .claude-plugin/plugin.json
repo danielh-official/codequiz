@@ -1,6 +1,6 @@
 {
   "name": "codequiz",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "Ambient understanding check. Every prompt, one open-ended code or product question about the repo you are in. Answer it, ignore it, or mute it for N prompts or N minutes.",
   "author": {
     "name": "Daniel (Haven) Hotyanov",
